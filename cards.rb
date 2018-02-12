@@ -15,7 +15,7 @@ A pgm that has a deck of cards, can shuffles, and deal them to players.
 
 require 'pry'
 
-# Game class that keeps track of players, cards, dealing, shuffeling, etc.
+# Game class that keeps track of players, cards, dealing, shuffling, etc.
 class Game 
     SUITA = [ 'H', 'C', 'D', 'S' ]
     VALUEA = [ '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A' ]
@@ -217,7 +217,7 @@ prompt(myGame)
 #
 createDeck(myGame)
 
-print "\nShould I print the deck BEFORE shuffeling? y/[n] "
+print "\nShould I print the deck BEFORE shuffling? y/[n] "
 if gets.chomp().match(/[yY]/) 
     myGame.showDeck
 end
