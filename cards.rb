@@ -5,10 +5,10 @@ Shuffle up a deck of cards and deal them out.
 
 A pgm that has a deck of cards, can shuffle, and then deal them to players.
 
-  Player 1: 3H
-  Player 2: 2C
-  Player 3: KS
-  Player 4: AH
+Player 1: 3H
+Player 2: 2C
+Player 3: KS
+Player 4: AH
 =end
 
 # TODO: Better user input processing with working Game class defaults.
@@ -23,10 +23,12 @@ $dm="\t->debug:"; # Debug Msg prompt
 class Game
   SUITA = [ 'H', 'C', 'D', 'S' ]
   VALUEA = [ '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A' ]
+  CARDSINDECK = SUITA.count * VALUEA.count
   def initialize
     @suitA = SUITA
     @valueA = VALUEA
     @numberOfDecks = 1  # May need more if user input requires it.
+    @numberOfDecksMax = 10000 # 10,000 deck max or 520,000 cards
     @players = 1        # Default. User input required
     @playersCards = {}  # Hash of each player number (key) and an array value of card objects they've been dealt
     @cardsDealt = 5     # Default. User input required
@@ -42,14 +44,23 @@ class Game
   def valueA
     @valueA
   end
+  def numberOfCardsInDeck
+    CARDSINDECK
+  end
   def deckCount
     @numberOfDecks
   end
-  def addToDeckCount(c)
-    @numberOfDecks += c
+  def deckCountPretty
+    makePretty(self.deckCount)
+  end
+  def addToDeckCount
+    @numberOfDecks += self.decksNeeded
   end
   def deckSetCount(s)
     @numberOfDecks = s
+  end
+  def exceedsDecksMax
+    self.decksNeeded > @numberOfDecksMax ? TRUE : FALSE
   end
   def players
     @players
@@ -60,11 +71,17 @@ class Game
   def cardsNeeded
     (@players * @cardsDealt)
   end
+  def cardsNeededPretty
+    makePretty(self.cardsNeeded)
+  end
   def cardsSetNeeded
     @cardsNeeded =  @players * @cardsDealt
   end
   def cardsDealt
     @cardsDealt
+  end
+  def cardsDealtPretty
+    makePretty(self.cardsDealt)
   end
   def cardsSetDealt(s)
     @cardsDealt = s
@@ -72,11 +89,20 @@ class Game
   def cardsAvailable
     (SUITA.count * VALUEA.count * @numberOfDecks)
   end
+  def cardsAvailablePretty
+    makePretty(self.cardsAvailable)
+  end
   def hasEnoughCards
     self.cardsAvailable >= self.cardsNeeded ? TRUE : FALSE
   end
-  def neededDecks
+  def decksNeeded
     (self.cardsNeeded - self.cardsAvailable)/self.cardsAvailable + 1
+  end
+  def decksNeededPretty
+    makePretty(self.decksNeeded)
+  end
+  def makePretty(o)
+    o.to_s.reverse.gsub(/...(?=.)/,'\&,').reverse
   end
   def setDeckOrder(a)
     @deckA = a
@@ -91,25 +117,26 @@ class Game
   # Print the deck array in the order shuffled
   def showDeck
     puts "\nDeck looks like this:"
+    # Dynamically determine leading spaces so output lines up nicely...
+    ls = self.cardsAvailable.to_s.size
     i = 0
     @deckA.each do |c|
       i += 1
-      puts "Card #{i} in deck is: #{c}->#{@deckOfCards[c].visible}"
+      puts "Card #{i.to_s.rjust(ls," ")} in deck is: #{c.to_s.rjust(ls, " ")}->#{@deckOfCards[c].visible}"
     end
   end
 
   # Determine cards in players hand by jumping through array by # of
-  # players instead of beginning to end sequentially.
+  # players instead of sequentially processing each card in the deck.
   def dealCards
     @players.times do |p|
-      c=p
-      c+=1
+      c=p + 1
       tmp = []
       puts "#{$dm} Dealing #{c} of #{cardsDealt} Cards for player #{c} of #{players}" if $debug
       while c <= cardsNeeded do
         puts "#{$dm} INSIDE While #{c} up to #{cardsNeeded}" if $debug
-        d=c-1 # This is ugly... :( Needed to start at array 0 beginning
-        tmp.push(@deckOfCards[@deckA[d]])
+        #d=c-1 # This is ugly... :( Needed to start at array 0 beginning
+        tmp.push(@deckOfCards[@deckA[c-1]])
         c += @players
       end
       @playersCards[(p+1)] = tmp
@@ -119,15 +146,42 @@ class Game
   # showHand - Prints out all player's cards.
   def showHands
     @players.times do |p|
-      i=p
-      i+=1
+      i=p + 1
       print "\nPlayer #{i}:"
+      # DJBHERE DJB HERE str = "file_" + i.to_s.rjust(n, "0")
       @playersCards[i].each do |c|
         print " #{c.visible}"
       end
     end
   end
-end
+
+  def agreesToAddMoreDecks
+    result = false
+    #puts "#{$dm} myGame.decksNeeded number is: #{myGame.decksNeededPretty}" if $debug
+    puts "#{$dm} self.decksNeeded number is: #{self.decksNeededPretty}" if $debug
+    print "Sorry, not enough cards!\n"
+    print "\tShould I add an additional #{self.decksNeededPretty} deck(s): y/[n] "
+
+    if gets.chomp().match(/y/i)
+      if ( self.exceedsDecksMax )
+        print "\n#{self.cardsNeededPretty} is a lot of cards! Are you sure you want to continue? y/[n] "
+        if gets.chomp().match(/y/i)
+          self.addToDeckCount
+          result = true
+        else
+          puts "Good idea! :) Let's start over..."
+        end
+      else
+        self.addToDeckCount
+        result = true # Number of added decks within numberOfDecksMax. Continue...
+      end
+    else
+      puts "Not have enough cards for each player. Let's start over..."
+    end
+    return result
+  end
+
+end # End of Class Game
 
 # Asks the user how many players are playing and how many cards should
 # be dealt. Prompts to add decks if there are not enough cards to play.
@@ -143,21 +197,11 @@ def prompt(myGame)
     print "\nEnter number of cards to be dealt each player: "
     myGame.cardsSetDealt(gets.chomp().to_i)
 
-    puts "\nCalculations indicate we will need #{myGame.cardsNeeded} cards and have #{myGame.cardsAvailable}"
-    if (!myGame.hasEnoughCards)
-      print "Sorry, not enough cards!\n"
-      print "\tShould I add another #{myGame.neededDecks} deck(s): y/[n] "
-
-      if !gets.chomp().match(/y/i)
-        puts "Starting over..."
-      else
-        myGame.addToDeckCount(myGame.neededDecks)
-        puts "#{$dm} myGame.neededDecks number is: #{myGame.neededDecks}" if $debug
-      end
-    end
-    puts "#{$dm} players is #{myGame.players} cards dealt are #{myGame.cardsDealt} deck count #{myGame.deckCount}" if $debug
-    puts "Does myGame have enough cards: #{myGame.hasEnoughCards}"
+    puts "\nCalculations indicate we will need #{myGame.cardsNeededPretty} cards and have #{myGame.cardsAvailablePretty}"
+    puts "#{$dm} Does myGame have enough cards: #{myGame.hasEnoughCards}" if $debug
+    puts "#{$dm} Players is #{myGame.players} cards dealt are #{myGame.cardsDealtPretty} deck count #{myGame.deckCountPretty}" if $debug
     break if myGame.hasEnoughCards
+    break if myGame.agreesToAddMoreDecks
   end
 end
 
@@ -165,7 +209,6 @@ end
 # passed in parameters: suit (Harts, Spades, etc.) and value (King,
 # Queen, Ten, etc.)
 class Card
-
   def initialize(s, v)
     @suit = s
     @value = v
@@ -174,34 +217,39 @@ class Card
 
     # Determine count 2 - 11
     if !v.match(/[^[:digit:]]+/)
-        @count = v.to_i
+      @count = v.to_i
     elsif v === 'A'
-        @count = 11
+      @count = 11
     else
-        @count = 10
+      @count = 10
     end
-  puts "#{$dm} In class: #{@suit}=#{s} #{@color} #{@value} #{@count} " if $debug
+    puts "#{$dm} In class: #{@suit}=#{s} #{@color} #{@value} #{@count} " if $debug
   end
 
+  # Returns the card value (2-A) and the suit it's in (hart, spade, etc.)
   def visible
     "#{@value}#{@suit}"
   end
 end
 
-# Creates the correct number of cards using the Card Class
-# required to be able to deal the necessary number of cards
-# so all players have enough to play. Stores the prestine
-# (in order two-through-Ace in each suite deck) in the Game class.
+# Creates the correct number of cards using the Card Class required
+# to be able to deal the necessary number of cards so all players
+# have enough to play. Stores the prestine, in order, two-through-Ace
+# in each suit deck, in the Game class.
 #
 def createDeck(myGame)
   x = 0
   deckA = []
   deckOfCards = {}
   myGame.deckCount.times do |d|
+    ###print "\n#{$dm}Deck: #{d+1}" if $debug
     myGame.suitA.each do |s|
+      ###print "\n#{$dm}  Suit: #{s} Cards: " if $debug
       myGame.valueA.each do |v|
         x += 1
         deckA.push(x)
+        ###print " #{v}" if $debug
+        #sleep(0.05)
 
         # Make a HASH of cards
         deckOfCards[x] = Card.new(s, v)
@@ -301,8 +349,5 @@ end
 puts "\n\nFini!"
 
 
-# Below NOT used. Went to Class solution instead of simple array.
-# Below will print out an ARRAY of cards
-#deckOfCardsA.each do |c|
-#    puts c.inspect
-#end
+# Below NOT used. Went to Class solution instead of simple array. Below will
+# print out an ARRAY of cards #deckOfCardsA.each do |c| puts c.inspect #end
