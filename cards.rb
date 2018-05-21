@@ -157,15 +157,14 @@ class Game
 
   def agreesToAddMoreDecks
     result = false
-    #puts "#{$dm} myGame.decksNeeded number is: #{myGame.decksNeededPretty}" if $debug
     puts "#{$dm} self.decksNeeded number is: #{self.decksNeededPretty}" if $debug
     print "Sorry, not enough cards!\n"
-    print "\tShould I add an additional #{self.decksNeededPretty} deck(s): y/[n] "
+    print "\tShould I add an additional #{self.decksNeededPretty} deck(s): y/[n]/q "
 
-    if gets.chomp().match(/y/i)
+    if (wantsToContinue(gets.chomp()).match(/^y/i))
       if ( self.exceedsDecksMax )
         print "\n#{self.cardsNeededPretty} is a lot of cards! Are you sure you want to continue? y/[n] "
-        if gets.chomp().match(/y/i)
+        if (wantsToContinue(gets.chomp()).match(/^y/i))
           self.addToDeckCount
           result = true
         else
@@ -191,11 +190,13 @@ end # End of Class Game
 def prompt(myGame)
   #binding.pry
   loop do
-    print "\nThis is a card game. Please enter number of players: "
-    myGame.playersSet(gets.chomp().to_i)
+    print "\nThis is a card game. Please enter number of players or quit: "
 
-    print "\nEnter number of cards to be dealt each player: "
-    myGame.cardsSetDealt(gets.chomp().to_i)
+    # Difficult reading, but wanted to see if I could do it. :)
+    myGame.playersSet(wantsToContinue(gets.chomp()).to_i)
+
+    print "\nEnter number of cards to be dealt each player or quit: "
+    myGame.cardsSetDealt(wantsToContinue(gets.chomp()).to_i)
 
     puts "\nCalculations indicate we will need #{myGame.cardsNeededPretty} cards and have #{myGame.cardsAvailablePretty}"
     puts "#{$dm} Does myGame have enough cards: #{myGame.hasEnoughCards}" if $debug
@@ -264,13 +265,26 @@ def createDeck(myGame)
 end
 
 def debugOnOrOff()
-  print "Would you like to see copious amounts of debug statements: y/[n] "
-  if gets.chomp().match(/^y/i)
+  print "Would you like to see copious amounts of debug statements: y/[n]/q "
+  a = gets.chomp()
+  if (a.match(/^y/i))
     $debug=true
     print "#{$dm} GAME ON!\n"
+  elsif a.match(/^q/i)
+      seeYa()
   else
     $debug=false
   end
+end
+
+# Write message to STDERR and exit with an error code.
+def seeYa()
+    abort("\nQuiting now. Bye!") 
+end
+
+def wantsToContinue(a)
+    abort("\nQuiting now. Bye!") if (a.match(/^q/i))
+    return a
 end
 
 def beginGame()
@@ -294,8 +308,11 @@ def beginGame()
   #
   createDeck(myGame)
 
-  print "\nShould I print the deck BEFORE shuffling? y/[n] "
-  if gets.chomp().match(/^y/i)
+  print "\nShould I print the deck BEFORE shuffling? y/[n]/q "
+  a = gets.chomp()
+  seeYa() if a.match(/^q/i)
+
+  if a.match(/^y/i)
     myGame.showDeck
   end
 
@@ -304,13 +321,18 @@ def beginGame()
   #
   # Hash has keys of 1-52 with a card object as the value.
   #
-  print "\nShould I shuffle? y/[n] "
-  if gets.chomp().match(/^y/i)
+  print "\nShould I shuffle? y/[n]/q "
+  a = gets.chomp()
+  seeYa() if a.match(/^q/i)
+
+  if a.match(/^y/i)
     myGame.shuffle
   end
 
-  print "\nShould I print the deck? y/[n] "
-  if gets.chomp().match(/^y/i)
+  print "\nShould I print the deck? y/[n]/q "
+  a = gets.chomp()
+  seeYa() if a.match(/^q/i)
+  if a.match(/^y/i)
     myGame.showDeck
   end
 
@@ -327,24 +349,21 @@ def beginGame()
   #
   myGame.dealCards
 
-  # Now print each players hash of held card objects and
-  # you're done! :)
-  #
+  # Print each players hash of held card objects and done! :)
   print "\n<ENTER> when you are ready to see each player's hand. "
-  gets.chomp()
+  seeYa() if gets.chomp().match(/^q/i)
+
   myGame.showHands
-  #myGame.destroy
 end
 
-print "\nWould you like to play a game? y/[n] "
 loop do
-  if gets.chomp().match(/^y/i)
+  print "\nWould you like to play a game? y/[n]/q "
+  if (wantsToContinue(gets.chomp()).match(/^y/i))
     beginGame()
   else
     print "\nBye."
     break;
   end
-  print "\n\nWould you like to play again? y/[n] "
 end
 puts "\n\nFini!"
 
